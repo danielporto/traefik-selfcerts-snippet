@@ -1,0 +1,14 @@
+local.dev {
+  file /etc/coredns/local.dev.domain
+  log  
+}
+
+localhost {
+  file /etc/coredns/localhost.domain
+  log  
+}
+
+. {
+    forward . 8.8.8.8
+    log
+}

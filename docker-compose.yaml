@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+
+  coredns:
+    image: "coredns/coredns:${COREDNS_VERSION}"
+    ports:
+      - 53:53
+      - 53:53/udp 
+    volumes:
+      - ./coredns/dev/Corefile:/etc/coredns/Corefile
+      - ./coredns/dev/local.dev.domain:/etc/coredns/local.dev.domain
+      - ./coredns/dev/localhost.domain:/etc/coredns/localhost.domain
+    command: -conf /etc/coredns/Corefile
+
+  httpd:
+    image: httpd
+    labels:
+      traefik.enable: true
+      traefik.http.routers.httpd.rule: Host(`httpd.${DOMAIN_NAME}`)
+      traefik.http.routers.httpd.entrypoints: websecure
+      traefik.http.routers.httpd.tls: true
+    depends_on:
+      traefik:
+        condition: service_healthy
+
+
+  nginx:
+    image: nginx
+    labels:
+      traefik.enable: true
+      traefik.http.routers.nginx.rule: Host(`nginx.${DOMAIN_NAME}`)
+      traefik.http.routers.nginx.entrypoints: websecure
+      traefik.http.routers.nginx.tls: true
+    depends_on:
+      traefik:
+        condition: service_healthy
+
+  traefik:
+    image: "traefik:v${TRAEFIK_VERSION}"
+    healthcheck:
+      test: 
+        - CMD
+        - traefik
+        - healthcheck
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/traefik.yaml:/etc/traefik/traefik.yaml
+      - ./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml
+      - ./certs/${DOMAIN_NAME}.crt:/certs/cert.crt
+      - ./certs/${DOMAIN_NAME}.key:/certs/priv.key      
+
